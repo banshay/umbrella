@@ -73,7 +73,7 @@ pub fn build(b: *std.Build) !void {
         };
 
         inline for (win_compilers) |wc| {
-            try qt_win_paths.append(alloc, "C:/Qt/6.9.0" ++ wc ++ "/lib");
+            try qt_win_paths.append(alloc, "C:/Qt/6.9.0/" ++ wc ++ "/lib");
         }
     }
 
