@@ -63,6 +63,26 @@ pub fn build(b: *std.Build) !void {
         "Qt6WebEngineWidgets",
     });
 
+    var qt_win_paths: std.ArrayListUnmanaged([]const u8) = .empty;
+
+    if (is_windows) {
+        const win_compilers = &.{
+            "mingw_64",
+            "llvm-mingw_64",
+            "msvc2022_64",
+        };
+
+        inline for (win_compilers) |wc| {
+            try qt_win_paths.append(alloc, "/mnt/d/qt/bin/6.9.0" ++ wc ++ "/lib");
+        }
+    }
+
+    if (is_windows) {
+        for (qt_win_paths.items) |path| {
+            exe.root_module.addLibraryPath(std.Build.LazyPath{ .cwd_relative = path });
+        }
+    }
+
     for (qt_libs.items) |lib| {
         exe.root_module.linkSystemLibrary(lib, .{});
     }
@@ -82,28 +102,8 @@ pub fn build(b: *std.Build) !void {
         "qwidget",
     });
 
-    var qt_win_paths: std.ArrayListUnmanaged([]const u8) = .empty;
-
-    if (is_windows) {
-        const win_compilers = &.{
-            "mingw_64",
-            "llvm-mingw_64",
-            "msvc2022_64",
-        };
-
-        inline for (win_compilers) |wc| {
-            try qt_win_paths.append(alloc, "/mnt/d/qt/bin/6.9.0" ++ wc ++ "/lib");
-        }
-    }
-
     for (qlibs.items) |lib| {
         exe.root_module.linkLibrary(qt6zig.artifact(lib));
-    }
-
-    if (is_windows) {
-        for (qt_win_paths.items) |path| {
-            exe.root_module.addLibraryPath(std.Build.LazyPath{ .cwd_relative = path });
-        }
     }
 
     // This declares intent for the executable to be installed into the
