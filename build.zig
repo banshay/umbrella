@@ -88,7 +88,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     // Link the compiled libqt6zig libraries to the executable
-    // qt_lib_name is the name of the target library without prefix and suffix, e.g. qapplication, qwidget, etc.
+    // qt_lib_name is the name of the target library without prefix and suffix, e.g. qapplication, qwidget, etc
     var qlibs: std.ArrayListUnmanaged([]const u8) = .empty;
     try qlibs.appendSlice(alloc, &[_][]const u8{
         "qabstractbutton",
