@@ -1,4 +1,5 @@
 const std = @import("std");
+const capy_build = @import("capy");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -26,8 +27,6 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    const is_windows = target.result.os.tag == .windows;
-
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
@@ -35,98 +34,39 @@ pub fn build(b: *std.Build) !void {
         .root_module = exe_mod,
     });
 
-    var arena = std.heap.ArenaAllocator.init(b.allocator);
-    defer arena.deinit();
-    const alloc = arena.allocator();
-
-    const qt6zig = b.dependency("libqt6zig", .{
-        .target = target,
-        .optimize = .ReleaseFast,
-    });
-
-    // After defining the executable, add the module from the library
-    exe.root_module.addImport("libqt6zig", qt6zig.module("libqt6zig"));
-
-    // Qt system libraries to link
-    var qt_libs: std.ArrayListUnmanaged([]const u8) = .empty;
-
-    try qt_libs.appendSlice(alloc, &[_][]const u8{
-        "Qt6Core",
-        "Qt6Gui",
-        "Qt6Widgets",
-        "Qt6Multimedia",
-        "Qt6MultimediaWidgets",
-        "Qt6PdfWidgets",
-        "Qt6PrintSupport",
-        "Qt6SvgWidgets",
-        "Qt6WebEngineCore",
-        "Qt6WebEngineWidgets",
-    });
-
-    var qt_win_paths: std.ArrayListUnmanaged([]const u8) = .empty;
-
-    if (is_windows) {
-        const win_compilers = &.{
-            "mingw_64",
-            "llvm-mingw_64",
-            "msvc2022_64",
-        };
-
-        inline for (win_compilers) |wc| {
-            try qt_win_paths.append(alloc, "C:/Qt/6.9.0/" ++ wc ++ "/lib");
-        }
-    }
-
-    if (is_windows) {
-        for (qt_win_paths.items) |path| {
-            exe.root_module.addLibraryPath(std.Build.LazyPath{ .cwd_relative = path });
-        }
-    }
-
-    for (qt_libs.items) |lib| {
-        exe.root_module.linkSystemLibrary(lib, .{});
-    }
-
-    // Link the compiled libqt6zig libraries to the executable
-    // qt_lib_name is the name of the target library without prefix and suffix, e.g. qapplication, qwidget, etc
-    var qlibs: std.ArrayListUnmanaged([]const u8) = .empty;
-    try qlibs.appendSlice(alloc, &[_][]const u8{
-        "qabstractbutton",
-        "qapplication",
-        "qcoreapplication",
-        "qcoreevent",
-        "qguiapplication",
-        "qobject",
-        "qpaintdevice",
-        "qpushbutton",
-        "qwidget",
-    });
-
-    for (qlibs.items) |lib| {
-        exe.root_module.linkLibrary(qt6zig.artifact(lib));
-    }
-
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
     b.installArtifact(exe);
 
+    //capy run step
+    const capy_dep = b.dependency("capy", .{
+        .target = target,
+        .optimize = optimize,
+        .app_name = @as([]const u8, "Umbrella Client"),
+    });
+
+    const capy = capy_dep.module("capy");
+    exe.root_module.addImport("capy", capy);
+
+    const run_cmd = try capy_build.runStep(exe, .{ .args = b.args });
+
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
     // such a dependency.
-    const run_cmd = b.addRunArtifact(exe);
+    // const run_cmd = b.addRunArtifact(exe);
 
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.
     // This is not necessary, however, if the application depends on other installed
     // files, this ensures they will be present and in the expected location.
-    run_cmd.step.dependOn(b.getInstallStep());
+    // run_cmd.step.dependOn(b.getInstallStep());
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    // if (b.args) |args| {
+    //     run_cmd.addArgs(args);
+    // }
 
     // This creates a build step. It will be visible in the `zig build --help` menu,
     // and can be selected like this: `zig build run`
