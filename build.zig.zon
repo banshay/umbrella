@@ -6,7 +6,8 @@
     //
     // It is redundant to include "zig" in this name because it is already
     // within the Zig package namespace.
-    .name = .umbrella,
+    // .name = .umbrella,
+    .name = "umbrella",
 
     // This is a [Semantic Version](https://semver.org/).
     // In a future version of Zig it will be used for package deduplication.
@@ -29,6 +30,7 @@
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
     .minimum_zig_version = "0.14.0",
+    .mach_zig_version = "2024.11.0-mach",
 
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
@@ -36,9 +38,9 @@
     // Once all dependencies are fetched, `zig build` no longer requires
     // internet connectivity.
     .dependencies = .{
-        .libqt6zig = .{
-            .url = "git+https://github.com/rcalixte/libqt6zig#4cc6ff4003a9a08f7878438407cfd28063ff5b9f",
-            .hash = "libqt6zig-6.4.2-OSXtXIElrwf-14ecKN0RSUE4phSQtxuCprQCjWrQbtJd",
+        .capy = .{
+            .url = "git+https://github.com/capy-ui/capy#4d41d962e6d0404a7beb9c37c1a5ba68556f9efb",
+            .hash = "1220a9eca88283c8a94250276532a6fbaab35e656817b8a44a9a3c215054c31804e4",
         },
     },
     .paths = .{
