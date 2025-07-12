@@ -1,4 +1,5 @@
 const std = @import("std");
+const lib = @import("lib.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
@@ -14,4 +15,6 @@ pub fn main() !void {
     const alloc = arena.allocator();
 
     _ = alloc;
+
+    _ = lib.run_command("hello from main");
 }

@@ -29,7 +29,7 @@
 
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.14.0",
+    .minimum_zig_version = "0.15.0-dev.936+fc2c1883b",
     // .mach_zig_version = "2024.11.0-mach",
 
     // This field is optional.

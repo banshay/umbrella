@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) !void {
 
     exe_mod.addImport("lib", lib_mod);
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addSharedLibrary(.{
         .name = "umbrella",
         .root_module = lib_mod,
     });
@@ -82,18 +82,6 @@ pub fn build(b: *std.Build) !void {
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
     b.installArtifact(exe);
-
-    //capy run step
-    // const capy_dep = b.dependency("capy", .{
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .app_name = @as([]const u8, "Umbrella Client"),
-    // });
-
-    // const capy = capy_dep.module("capy");
-    // exe.root_module.addImport("capy", capy);
-
-    // const run_cmd = try capy_build.runStep(exe, .{ .args = b.args });
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
