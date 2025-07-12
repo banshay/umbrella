@@ -1,5 +1,5 @@
 const std = @import("std");
-const capy_build = @import("capy");
+// const capy_build = @import("capy");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -41,6 +41,33 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(lib);
 
+    const zqlite = b.dependency("zqlite", .{ .target = target, .optimize = optimize });
+    exe_mod.addImport("zqlite", zqlite.module("zqlite"));
+
+    exe_mod.addCSourceFile(.{
+        .file = b.path("libs/sqlite/sqlite3.c"),
+        .flags = &[_][]const u8{
+            "-DSQLITE_DQS=0",
+            "-DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
+            "-DSQLITE_USE_ALLOCA=1",
+            "-DSQLITE_THREADSAFE=1",
+            "-DSQLITE_TEMP_STORE=3",
+            "-DSQLITE_ENABLE_API_ARMOR=1",
+            "-DSQLITE_ENABLE_UNLOCK_NOTIFY",
+            "-DSQLITE_ENABLE_UPDATE_DELETE_LIMIT=1",
+            "-DSQLITE_DEFAULT_FILE_PERMISSIONS=0600",
+            "-DSQLITE_OMIT_DECLTYPE=1",
+            "-DSQLITE_OMIT_DEPRECATED=1",
+            "-DSQLITE_OMIT_LOAD_EXTENSION=1",
+            "-DSQLITE_OMIT_PROGRESS_CALLBACK=1",
+            "-DSQLITE_OMIT_SHARED_CACHE",
+            "-DSQLITE_OMIT_TRACE=1",
+            "-DSQLITE_OMIT_UTF16=1",
+            "-DHAVE_USLEEP=0",
+        },
+    });
+    exe_mod.addIncludePath(b.path("libs/sqlite"));
+
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
@@ -49,50 +76,52 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("src/main.zig"),
     });
 
+    exe.linkSystemLibrary("c");
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
     b.installArtifact(exe);
 
     //capy run step
-    const capy_dep = b.dependency("capy", .{
-        .target = target,
-        .optimize = optimize,
-        .app_name = @as([]const u8, "Umbrella Client"),
-    });
+    // const capy_dep = b.dependency("capy", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    //     .app_name = @as([]const u8, "Umbrella Client"),
+    // });
 
-    const capy = capy_dep.module("capy");
-    exe.root_module.addImport("capy", capy);
+    // const capy = capy_dep.module("capy");
+    // exe.root_module.addImport("capy", capy);
 
-    const run_cmd = try capy_build.runStep(exe, .{ .args = b.args });
+    // const run_cmd = try capy_build.runStep(exe, .{ .args = b.args });
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
     // such a dependency.
-    // const run_cmd = b.addRunArtifact(exe);
+    const run_cmd = b.addRunArtifact(exe);
 
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.
     // This is not necessary, however, if the application depends on other installed
     // files, this ensures they will be present and in the expected location.
-    // run_cmd.step.dependOn(b.getInstallStep());
+    run_cmd.step.dependOn(b.getInstallStep());
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
-    // if (b.args) |args| {
-    //     run_cmd.addArgs(args);
-    // }
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
 
     // This creates a build step. It will be visible in the `zig build --help` menu,
     // and can be selected like this: `zig build run`
     // This will evaluate the `run` step rather than the default, which is "install".
 
     const run_step = b.step("run", "Run the app");
-    run_step.dependOn(run_cmd);
+    run_step.dependOn(&run_cmd.step);
 
     const exe_unit_tests = b.addTest(.{
         // .root_module = exe_mod,
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/testing.zig"),
     });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
