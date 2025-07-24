@@ -1,5 +1,5 @@
 const std = @import("std");
-// const capy_build = @import("capy");
+const cimgui = @import("cimgui_zig");
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
@@ -22,6 +22,28 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    //imgui
+    const imgui_dep = b.dependency("cimgui_zig", .{
+        .target = target,
+        .optimize = optimize,
+        .platform = cimgui.Platform.GLFW,
+        .renderer = cimgui.Renderer.OpenGL3,
+        // .@"toolbox-logging" = true,
+    });
+    const imgui_lib = imgui_dep.artifact("cimgui");
+
+    // const gl_mod = imgui_lib.root_module.import_table.get("gl").?;
+    // _ = imgui_lib.root_module.import_table.swapRemove("gl");
+
+    // lib_mod.addImport("gl", gl_mod);
+    lib_mod.addIncludePath(.{
+        .cwd_relative = "libs/include",
+    });
+
+    lib_mod.linkLibrary(imgui_lib);
+
+    // lib_mod.linkSystemLibrary("opengl32", .{});
+
     // // We will also create a module for our other entry point, 'main.zig'.
     const exe_mod = b.createModule(.{
         // `root_source_file` is the Zig "entry point" of the module. If a module
@@ -33,6 +55,10 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    exe_mod.addIncludePath(.{
+        .cwd_relative = "libs/include",
+    });
+    // exe_mod.addImport("gl", gl_mod);
     exe_mod.addImport("lib", lib_mod);
 
     const lib = b.addSharedLibrary(.{
@@ -76,6 +102,10 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("src/main.zig"),
     });
 
+    // exe.root_module.addImport("gl", imgui_lib.root_module.import_table.get("gl").?);
+    // _ = imgui_lib.root_module.import_table.swapRemove("gl");
+
+    exe.linkLibC();
     exe.linkSystemLibrary("c");
 
     // This declares intent for the executable to be installed into the

@@ -29,7 +29,8 @@
 
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.15.0-dev.936+fc2c1883b",
+    // .minimum_zig_version = "0.15.0-dev.936+fc2c1883b",
+    .minimum_zig_version = "0.14.1",
     // .mach_zig_version = "2024.11.0-mach",
 
     // This field is optional.
@@ -45,6 +46,10 @@
         .zqlite = .{
             .url = "git+https://github.com/karlseguin/zqlite.zig?ref=master#f0de7a25b97c38c3209e218d6b1a79e93ed54be1",
             .hash = "12203fe4fcb336d29e22a7a880472813363b26d527cde3ffb0d349b8edb6ac43c34b",
+        },
+        .cimgui_zig = .{
+            .url = "https://github.com/tiawl/cimgui.zig/archive/refs/tags/v1.92.1-docking.tar.gz",
+            .hash = "cimgui_zig-1.0.0-2XubkjY7XwD3pj2pU40gvIdQ2A0EQPlojopNRq0WgRAm",
         },
     },
     .paths = .{
