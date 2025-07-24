@@ -23,9 +23,9 @@ pub fn window() !void {
 
     // --- Window Creation (Hidden) ---
     // This is the key part for hiding the main window
-    // c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_FALSE);
+    c.glfwWindowHint(c.GLFW_VISIBLE, c.GLFW_FALSE);
 
-    const win = c.glfwCreateWindow(1280, 720, "Hidden Main Window", null, null);
+    const win = c.glfwCreateWindow(1, 1, "Hidden Main Window", null, null);
     if (win == null) {
         std.log.err("Failed to create GLFW window", .{});
         return;
@@ -59,6 +59,21 @@ pub fn window() !void {
     _ = c.cImGui_ImplOpenGL3_Init();
     defer c.cImGui_ImplOpenGL3_Shutdown();
 
+    //initial position
+    var win_pos: c.ImVec2 = undefined;
+    if (c.glfwGetPrimaryMonitor()) |monitor| {
+        const videoMode = c.glfwGetVideoMode(monitor);
+        const x: f32 = @floatFromInt(videoMode.*.width);
+        const y: f32 = @floatFromInt(videoMode.*.height);
+        win_pos = .{
+            .x = x * 0.5,
+            .y = y * 0.3,
+        };
+    } else {
+        win_pos = .{ .x = 2540, .y = 0 };
+    }
+    std.log.debug("displaysize (x = {d}, y = {d})", .{ win_pos.x, win_pos.y });
+
     // --- Main Loop ---
     var open: bool = true;
     while (open) {
@@ -70,13 +85,9 @@ pub fn window() !void {
 
         // An ImGui window that will be visible
         // c.ImGui_ShowDemoWindow(&open);
-        // content(&open);
-        // _ = c.ImGui_DockSpaceOverViewport();
-        //
-        _ = c.ImGui_Begin("Comms", &open, 0);
-        c.ImGui_Text("Hello world from me too");
-        c.ImGui_Spacing();
-        c.ImGui_End();
+
+        //main commander contend window
+        content(&open, win_pos);
 
         c.ImGui_Render();
         c.cImGui_ImplOpenGL3_RenderDrawData(c.ImGui_GetDrawData());
@@ -90,36 +101,26 @@ pub fn window() !void {
         }
 
         c.glfwSwapBuffers(win);
+
+        //FOR DEBUG ONLY
+        // open = false;
     }
 }
 
-fn content(open: [*c]bool) void {
-
-    // const main_viewport: *c.ImGuiViewport = c.ImGui_GetMainViewport();
-    // c.ImGui_SetNextWindowPos(.{
-    //     .x = main_viewport.Pos.x + 650,
-    //     .y = main_viewport.Pos.y + 20,
-    // }, c.ImGuiCond_FirstUseEver);
-    // c.ImGui_SetNextWindowSize(.{ .x = 550, .y = 680 }, c.ImGuiCond_FirstUseEver);
-    // c.ImGui_SetNextWindowViewport(main_viewport.ID);
-
-    if (!c.ImGui_Begin("Commander", open, c.ImGuiWindowFlags_MenuBar)) {
-        c.ImGui_End();
-        return;
-    }
-
+fn content(open: [*c]bool, win_pos: c.ImVec2) void {
     const label_width_base = c.ImGui_GetFontSize() * 12;
     const label_width_max = c.ImGui_GetContentRegionAvail().x * 0.40;
     const label_width = @min(label_width_base, label_width_max);
     c.ImGui_PushItemWidth(-label_width);
 
-    // const io = c.ImGui_GetIO();
-    // if (io.*.ConfigFlags & c.ImGuiConfigFlags_DockingEnable == 1) {
-    //     const dockspace_id = c.ImGui_GetID("MyDockspace");
-    //     _ = c.ImGui_DockSpace(dockspace_id);
-    // }
+    if (!c.ImGui_Begin("Comms", open, 0)) {
+        c.ImGui_End();
+        return;
+    }
 
     c.ImGui_Text("Hello world in the ui aswell %s", "from the code I guess");
 
+    const size = c.ImGui_GetWindowSize();
+    c.ImGui_SetWindowPos(.{ .x = win_pos.x - (size.x / 2), .y = win_pos.y - (size.y / 2) }, c.ImGuiCond_Once);
     c.ImGui_End();
 }
