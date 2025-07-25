@@ -1,4 +1,5 @@
 const std = @import("std");
+const types = @import("types.zig");
 
 const c = @cImport({
     @cDefine("GLFW_INCLUDE_NONE", "1");
@@ -7,6 +8,10 @@ const c = @cImport({
     @cInclude("backends/dcimgui_impl_glfw.h");
     @cInclude("backends/dcimgui_impl_opengl3.h");
 });
+
+const Command = types.Command;
+const Step = types.Step;
+const CurlStep = types.CurlStep;
 
 fn errorCallback(errn: c_int, str: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error '{}'': {s}", .{ errn, str });
@@ -124,3 +129,7 @@ fn content(open: [*c]bool, win_pos: c.ImVec2) void {
     c.ImGui_SetWindowPos(.{ .x = win_pos.x - (size.x / 2), .y = win_pos.y - (size.y / 2) }, c.ImGuiCond_Once);
     c.ImGui_End();
 }
+
+const data: Command = &[_]Command{
+    .{ .step = &[_]Step{CurlStep{ .command = "curl -X GET http://localhost:8090/api/swagger" }} },
+};
