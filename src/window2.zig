@@ -17,7 +17,7 @@ fn errorCallback(errn: c_int, str: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error '{}'': {s}", .{ errn, str });
 }
 
-pub fn window() !void {
+pub fn window(alloc: std.mem.Allocator) !void {
     // --- GLFW/SDL Initialization ---
     _ = c.glfwSetErrorCallback(errorCallback);
     if (c.glfwInit() == 0) {
@@ -79,6 +79,8 @@ pub fn window() !void {
     }
     std.log.debug("displaysize (x = {d}, y = {d})", .{ win_pos.x, win_pos.y });
 
+    var selected_i: ?usize = null;
+
     // --- Main Loop ---
     var open: bool = true;
     while (open) {
@@ -91,8 +93,14 @@ pub fn window() !void {
         // An ImGui window that will be visible
         // c.ImGui_ShowDemoWindow(&open);
 
+        if (c.ImGui_Shortcut(c.ImGuiKey_Escape, c.ImGuiInputFlags_RouteGlobal)) open = false;
+
         //main commander contend window
-        content(&open, win_pos);
+        // content(&open, win_pos, &selected_i, try testData(alloc));
+
+        selected_i = 0;
+        _ = alloc;
+        c.ImGui_ShowDemoWindow(&open);
 
         c.ImGui_Render();
         c.cImGui_ImplOpenGL3_RenderDrawData(c.ImGui_GetDrawData());
@@ -112,7 +120,7 @@ pub fn window() !void {
     }
 }
 
-fn content(open: [*c]bool, win_pos: c.ImVec2) void {
+fn content(open: [*c]bool, win_pos: c.ImVec2, selected_i: *?usize, data: []const Command) void {
     const label_width_base = c.ImGui_GetFontSize() * 12;
     const label_width_max = c.ImGui_GetContentRegionAvail().x * 0.40;
     const label_width = @min(label_width_base, label_width_max);
@@ -123,13 +131,92 @@ fn content(open: [*c]bool, win_pos: c.ImVec2) void {
         return;
     }
 
-    c.ImGui_Text("Hello world in the ui aswell %s", "from the code I guess");
+    for (data, 0..) |command, i| {
+        const selected = c.ImGui_SelectableEx(
+            @ptrCast(command.command),
+            selected_i.* == i,
+            c.ImGuiWindowFlags_None,
+            .{ .x = 0, .y = 0 },
+        );
+        if (selected) selected_i.* = i;
+    }
 
     const size = c.ImGui_GetWindowSize();
     c.ImGui_SetWindowPos(.{ .x = win_pos.x - (size.x / 2), .y = win_pos.y - (size.y / 2) }, c.ImGuiCond_Once);
     c.ImGui_End();
+
+    if (selected_i.*) |i| {
+        const command = data[i];
+        var command_open = true;
+
+        command_window(command, &command_open, c.ImGui_GetWindowPos());
+
+        if (!command_open) selected_i.* = null;
+    }
 }
 
-const data: Command = &[_]Command{
-    .{ .step = &[_]Step{CurlStep{ .command = "curl -X GET http://localhost:8090/api/swagger" }} },
+fn command_window(command: Command, open: *bool, win_pos: c.ImVec2) void {
+    c.ImGui_SetNextWindowPos(
+        .{ .x = win_pos.x - 300, .y = win_pos.y - 300 },
+        c.ImGuiCond_Once,
+    );
+    _ = c.ImGui_Begin(command.command.ptr, open, c.ImGuiWindowFlags_None);
+    const label_width_base = c.ImGui_GetFontSize() * 12;
+    const label_width_max = c.ImGui_GetContentRegionAvail().x * 0.40;
+    const label_width = @min(label_width_base, label_width_max);
+    c.ImGui_PushItemWidth(-label_width);
+
+    for (command.steps) |step| {
+        if (c.ImGui_TreeNode(stepToName(step).ptr)) {
+            //have content of step
+
+            step.draw();
+
+            c.ImGui_TreePop();
+        }
+    }
+
+    c.ImGui_End();
+}
+
+fn stepToName(step: Step) []const u8 {
+    return switch (step) {
+        .curl => "Curl Step",
+        .authentication => "Authentication Step",
+        .unknown => "Not set",
+    };
+}
+
+fn testData(alloc: std.mem.Allocator) ![]Command {
+    var l = std.ArrayList(Command).init(alloc);
+    defer l.deinit();
+
+    var s = std.ArrayList(Step).init(alloc);
+    defer s.deinit();
+
+    try s.append(.{ .curl = .{
+        .command = try std.fmt.allocPrintZ(alloc, "curl -X POST http://lukas-tfe:8090/api/swagger", .{}),
+    } });
+
+    try l.append(.{
+        .command = try std.fmt.allocPrintZ(alloc, "sync {{pmsPropertyId}} {{pmsReservationId}}", .{}),
+        .steps = try s.toOwnedSlice(),
+    });
+
+    return try l.toOwnedSlice();
+}
+
+const test_data = &[_]Command{
+    Command{
+        .command = @constCast(@as([:0]const u8, "sync {pmsPropertyId} {pmsReservationId}")),
+        .steps = &[_]Step{
+            .{ .curl = CurlStep{ .command = @constCast(@as([:0]const u8, "curl -X POST http://lukas-tfe:8090/api/swagger")) } },
+        },
+    },
+    Command{
+        .command = @constCast(@as([:0]const u8, "do something else")),
+        .steps = &[_]Step{
+            .{ .curl = CurlStep{ .command = @constCast(@as([:0]const u8, "curl -X GET https://api.example.com/data")) } },
+        },
+    },
 };
