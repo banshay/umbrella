@@ -13,6 +13,11 @@ const Command = types.Command;
 const Step = types.Step;
 const CurlStep = types.CurlStep;
 
+const AppData = struct {
+    selected_i: ?usize,
+    show_demo: bool,
+};
+
 fn errorCallback(errn: c_int, str: [*c]const u8) callconv(.C) void {
     std.log.err("GLFW Error '{}'': {s}", .{ errn, str });
 }
@@ -79,7 +84,10 @@ pub fn window(alloc: std.mem.Allocator) !void {
     }
     std.log.debug("displaysize (x = {d}, y = {d})", .{ win_pos.x, win_pos.y });
 
-    var selected_i: ?usize = null;
+    var app_data = AppData{
+        .selected_i = null,
+        .show_demo = false,
+    };
 
     // --- Main Loop ---
     var open: bool = true;
@@ -95,12 +103,12 @@ pub fn window(alloc: std.mem.Allocator) !void {
 
         if (c.ImGui_Shortcut(c.ImGuiKey_Escape, c.ImGuiInputFlags_RouteGlobal)) open = false;
 
-        //main commander contend window
-        // content(&open, win_pos, &selected_i, try testData(alloc));
+        // if (app_data.show_demo) {
+        //     c.ImGui_ShowDemoWindow(&app_data.show_demo);
+        // }
 
-        selected_i = 0;
-        _ = alloc;
-        c.ImGui_ShowDemoWindow(&open);
+        //main commander contend window
+        content(&open, win_pos, &app_data, try testData(alloc));
 
         c.ImGui_Render();
         c.cImGui_ImplOpenGL3_RenderDrawData(c.ImGui_GetDrawData());
@@ -120,38 +128,51 @@ pub fn window(alloc: std.mem.Allocator) !void {
     }
 }
 
-fn content(open: [*c]bool, win_pos: c.ImVec2, selected_i: *?usize, data: []const Command) void {
+fn content(open: [*c]bool, win_pos: c.ImVec2, app_data: *AppData, data: []const Command) void {
     const label_width_base = c.ImGui_GetFontSize() * 12;
     const label_width_max = c.ImGui_GetContentRegionAvail().x * 0.40;
     const label_width = @min(label_width_base, label_width_max);
     c.ImGui_PushItemWidth(-label_width);
 
-    if (!c.ImGui_Begin("Comms", open, 0)) {
+    var window_flags: c_int = 0;
+    window_flags |= c.ImGuiWindowFlags_MenuBar;
+
+    if (!c.ImGui_Begin("Comms", open, window_flags)) {
         c.ImGui_End();
         return;
     }
 
+    if (c.ImGui_BeginMenuBar()) {
+        if (c.ImGui_BeginMenu("Tools")) {
+            if (c.ImGui_MenuItem("Demo")) {
+                app_data.show_demo = true;
+            }
+        }
+        c.ImGui_EndMenu();
+    }
+    c.ImGui_EndMenuBar();
+
     for (data, 0..) |command, i| {
         const selected = c.ImGui_SelectableEx(
             @ptrCast(command.command),
-            selected_i.* == i,
+            app_data.selected_i != null and app_data.selected_i.? == i,
             c.ImGuiWindowFlags_None,
             .{ .x = 0, .y = 0 },
         );
-        if (selected) selected_i.* = i;
+        if (selected) app_data.selected_i = i;
     }
 
     const size = c.ImGui_GetWindowSize();
     c.ImGui_SetWindowPos(.{ .x = win_pos.x - (size.x / 2), .y = win_pos.y - (size.y / 2) }, c.ImGuiCond_Once);
     c.ImGui_End();
 
-    if (selected_i.*) |i| {
+    if (app_data.selected_i) |i| {
         const command = data[i];
         var command_open = true;
 
         command_window(command, &command_open, c.ImGui_GetWindowPos());
 
-        if (!command_open) selected_i.* = null;
+        if (!command_open) app_data.selected_i = null;
     }
 }
 

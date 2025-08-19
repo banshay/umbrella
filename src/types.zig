@@ -35,7 +35,10 @@ pub const CurlStep = struct {
     command: [:0]u8,
 
     pub fn draw(self: CurlStep) void {
-        _ = c.ImGui_InputTextMultiline("command", self.command.ptr, self.command.len);
+        var buffer: [4096:0]u8 = undefined;
+        @memset(&buffer, 0);
+        std.mem.copyForwards(u8, &buffer, self.command);
+        _ = c.ImGui_InputTextMultiline("command", &buffer, buffer.len);
     }
 };
 
